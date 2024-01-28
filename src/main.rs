@@ -1,4 +1,5 @@
-use dotenv_codegen::dotenv;
+use std::env;
+use std::process::ExitCode;
 
 use serenity::async_trait;
 use serenity::prelude::*;
@@ -27,14 +28,22 @@ impl EventHandler for Handler {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), ExitCode> {
     tracing_subscriber::fmt::init();
 
     let framework = StandardFramework::new()
         .configure(|c| c.prefix("!"))
         .group(&GENERAL_GROUP);
 
-    let token = dotenv!("DISCORD_TOKEN");
+    let token: String;
+    if let Ok(t) = env::var("OXIMARE_DISCORD_TOKEN") {
+        token = t;
+    } else {
+        eprintln!("The OXIMARE_DISCORD_TOKEN environment variable is not set!");
+        return Err(ExitCode::FAILURE);
+    }
+    
+
     let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
     let mut client = Client::builder(token, intents)
         .framework(framework)
@@ -43,6 +52,9 @@ async fn main() {
         .expect("Error creating client!");
 
     if let Err(why) = client.start().await {
-        println!("An error ocurred while running the client: {:?}", why);
+        eprintln!("An error ocurred while running the client: {:?}", why);
+        return Err(ExitCode::FAILURE);
     }
+
+    Ok(())
 }
